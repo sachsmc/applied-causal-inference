@@ -1,0 +1,395 @@
+---
+title: "Regression and Standardization"
+subtitle: "Causal inference series"
+author: "Michael C Sachs"
+format: 
+    revealjs:
+      scrollable: true
+      max-scale: 1
+      min-scale: 1
+execute:
+  echo: true
+---
+
+
+
+## Example
+
+::: {.callout-tip}
+# The scientific question
+
+Does drinking coffee in childhood stunt growth? 
+:::
+
+In the __ideal study__
+
+1. We would enroll children aged 10 - 12 
+2. Randomize them to drink coffee versus placebo
+3. Follow them up for 8 years (very closely to ensure compliance)
+4. Measure height at age 18 - 20
+5. Causal parameter of interest is 
+
+$$
+E\{Y(X = 1)\} - E\{Y(X = 0)\}
+$$
+    
+
+## Identifiability
+
+Is the effect of interest identifiable from these data? 
+
+Yes! The dag is simple in this case:
+
+
+```{r}
+#| echo: false
+library(dagitty)
+
+g1 <- dagitty( "dag {
+    X -> Y
+    C -> Y
+}")
+coordinates(g1) <- list(x = c(C = 1.5, X = 1, Y = 2), 
+                        y = c(C = 2, X = 1, Y = 1))
+
+plot(g1)
+```
+
+
+## Estimation
+
+Our usual estimand is
+
+$$
+E(Y | X = 1) - E(Y | X = 0).
+$$
+
+This defines an estimator of the causal parameter because
+
+$$
+E(Y | X = x) = E\{Y(X = x) | X = x\}
+$$
+which is always true (sometimes called the consistency assumption/axiom).
+
+Because of randomization, the potential outcomes are independent of the treatment assignment:
+$$
+E\{Y(X = x) | X = x\} = E\{Y(X = x)\}
+$$
+
+## Estimation continued
+
+An estimator is 
+$$
+\frac{\sum_i Y_i X_i}{\sum_i X_i} - \frac{\sum_i Y_i (1 - X_i)}{\sum_i (1 - X_i)}
+$$
+which is what you get from a t-test. 
+
+This is not the only possible estimator. It is consistent for the causal effect of interest, which means that as the sample size increases, the estimator will approach the truth. There are other properties to consider 
+
+- robustness, sensitivity of the estimator to the assumptions (not so relevant for this example)
+- efficiency, how precise the estimator is compared to alternatives
+
+## Alternative estimand
+
+Linear regression adjusted for $C$: 
+
+$$
+E(Y | X, C) = \beta_0 + \beta_1 X + \beta_2 C
+$$
+
+As long as there is no interaction, $\beta_1$ has the interpretation $E(Y | X = 1) - E(Y | X = 0)$, so what's the difference? 
+
+The estimator is different from the t-test, and it involves $C$
+
+## Simulation
+
+```{r}
+#| echo: true
+generate_ests <- function(n = 300) {
+  X <- rbinom(n, 1, .5)
+  C <- rnorm(n)
+  Y <- 1 + 1 * X + C + rnorm(n)
+  
+  c(ttest = t.test(Y ~ X)$estimate |> diff(), 
+    lm = lm(Y ~ X + C)$coefficients[2])
+
+}
+
+simul <- t(replicate(1e3, generate_ests()))
+
+summary(simul) 
+apply(simul, 2, sd)
+```
+
+It gives the same answer, and is much more efficient. What are the drawbacks? 
+
+We need to get the __outcome model__ correct, so it is potentially less __robust__.
+
+However, linear regression is quite robust, it is hard to get the outcome model wrong enough to make a difference. 
+
+## Simulation 2
+
+```{r}
+#| echo: true
+generate_ests2 <- function(n = 300) {
+  X <- rbinom(n, 1, .5)
+  C <- rnorm(n)
+  U <- rnorm(n)
+  Y <- 1 + 1 * X + 5 * X * (C > 1) - 3 * (C < 1) + rnorm(n)
+  
+  c(ttest = t.test(Y ~ X)$estimate |> diff(), 
+    lm = lm(Y ~ X + C)$coefficients[2])
+
+}
+
+simul <- t(replicate(1e3, generate_ests2()))
+
+summary(simul) 
+apply(simul, 2, sd)
+```
+
+::: {.callout-warning}
+# Warning
+
+Lessons from linear regression _do not_ often apply to other types of regression. For example, the coefficient in an adjusted logistic model is _not_ an estimand for the causal difference. 
+:::
+
+## A confounded setting
+
+The more typical scenario since we can't force children to drink coffee:
+
+```{r}
+#| echo: false
+g2 <- dagitty( "dag {
+    X -> Y
+    C -> Y
+    C -> X
+}")
+coordinates(g2) <- list(x = c(C = 1.5, X = 1, Y = 2), 
+                        y = c(C = 2, X = 1, Y = 1))
+
+plot(g2)
+```
+
+How do we estimate this now? 
+
+## The g-forumla
+
+Let's focus on the first term $E\{Y(X = 1)\}$
+
+$$
+E\{Y(1)\} = \sum_c E(Y(1) | C = c) P(C = c) = \sum_c E(Y(1) | C = c, X = 1) P(C = c) 
+$$
+$$
+= \sum_c E(Y | C = c, X = 1) P(C = c) 
+$$
+under the assumptions in the dag. 
+
+The first component inside the sum is an outcome model, we can use a prediction from linear regression. 
+
+For the second component, we can use the _empirical distribution_. This is based on the random sampling principle: if I have $n$ subjects in my sample, and the $i$ th subject's covariates are $C_i$, my best guess of the probability of observing data like $C_i$ is $1/n$
+
+
+## Regression standardization
+
+The regression standardization estimator of the g-formula is
+
+$$
+\hat{E}\{Y(1)\} = \sum_{i=1}^n \hat{E}(Y | X = 1, C = C_i) \cdot \frac{1}{n}.
+$$
+
+The basic approach: 
+
+1. Fit an outcome model involving the exposure of interest and confounders
+2. Copy the data used to fit the model and then: 
+    a. Replace observed values of $X$ with 1, and get predictions from the model: $\hat{E}(Y_i(1))$
+    b. Replace observed values of $X$ with 0, and get predictions from the model: $\hat{E}(Y_i(0))$
+3. Take the mean and then the difference: $\frac{1}{n}\sum_i \hat{E}(Y_i(1)) - \hat{E}(Y_i(0))$
+    
+
+## Linear regression
+
+Example, using simulated data:
+
+```{r}
+n <- 800
+C <- rnorm(n)
+X <- rbinom(n, 1, plogis(-1 + 2 * C))
+Y <- 1 + 1 * X + C + .5 * X * C + rnorm(n)
+simdata <- data.frame(C, Y, X)
+
+fit <- glm(Y ~ C + X + C:X, data = simdata)
+simdata0 <- simdata1 <- simdata
+
+simdata0$X <- 0
+simdata1$X <- 1
+
+EYi_1 <- predict(fit, newdata = simdata1)
+EYi_0 <- predict(fit, newdata = simdata0)
+
+mean(EYi_1) - mean(EYi_0)
+```
+
+
+## Inference?
+
+One option is to use the bootstrap:
+
+```{r}
+B <- 1000
+bootests <- rep(NA, B)
+for(i in 1:B) {
+  simdata.star <- simdata[sample(1:nrow(simdata), 
+                                 nrow(simdata), replace = TRUE), ]
+
+  fit <- glm(Y ~ C + X + C:X, data = simdata.star)
+  simdata0 <- simdata1 <- simdata.star
+
+  simdata0$X <- 0
+  simdata1$X <- 1
+
+  bootests[i] <- mean(predict(fit, newdata = simdata1)) - 
+    mean(predict(fit, newdata = simdata0))
+}
+
+sd(bootests)
+quantile(bootests, c(0.025, 0.9756))
+```
+
+Or you can use the `stdReg` package
+
+```{r}
+library("stdReg")
+
+stdfit <- stdGlm(fit, data = simdata, X = "X", x = c(0, 1))
+summary(stdfit, contrast = "difference", reference = 0)
+```
+
+
+
+## Logistic regression
+
+With a binary outcome, we would tend to use logistic regression. 
+
+$$
+\mbox{logit}(p\{Y = 1 | X, C\}) = \beta_0 + \beta_1 X + \beta_2 C
+$$
+
+but the coefficient $\beta_1$ is not a _marginal causal contrast_, i.e., there is no function $g$ such that 
+
+$$
+\beta_1 = g\{Y(1), Y(0)\}, 
+$$
+the reason being that the nonlinear function does not simplify, so that it continues to depend on $C$, it is a _conditional causal contrast_. Besides, we want the risk difference or risk ratio, so we __need__ to standardize with logistic regression. 
+
+## Binary example
+
+The steps are nearly identical:
+
+```{r}
+n <- 800
+C <- rnorm(n)
+X <- rbinom(n, 1, plogis(-1 + 2 * C))
+Y <- rbinom(n, 1, plogis(1 + 1 * X + C + .5 * X * C))
+simdata <- data.frame(C, Y, X)
+
+fit <- glm(Y ~ C + X + C:X, data = simdata, family = "binomial")
+simdata0 <- simdata1 <- simdata
+
+simdata0$X <- 0
+simdata1$X <- 1
+
+EYi_1 <- predict(fit, newdata = simdata1, type = "response")
+EYi_0 <- predict(fit, newdata = simdata0, type = "response")
+
+mean(EYi_1) - mean(EYi_0)
+mean(EYi_1) / mean(EYi_0)
+```
+
+
+Or use the `stdReg` package
+
+```{r}
+stdfit <- stdGlm(fit, X = "X", x = c(0,1), data = simdata)
+summary(stdfit, contrast = "difference", reference = 0)
+summary(stdfit, contrast = "ratio", reference = 0)
+
+```
+
+
+## Cox regression and other survival models
+
+For a time to event outcome $Y$, the Cox model assumes
+$$
+\lim_{\delta \rightarrow 0} \frac{1}{\delta}p\{t \leq Y < t + \delta | Y \geq t, X, C\} = \lambda_0(t) \exp(\beta_1 X + \beta_2 C)
+$$
+
+$\beta_1$ is not generally a causal contrast, for different reasons than the logistic model. Hence we need to standardize to get a contrast of survival probabilities such as
+$$
+p\{Y(1) > \tau\} - p\{Y(0) > \tau\}
+$$
+for a given time $\tau$. 
+
+The standardization procedure is basically the same
+
+::: {.callout-note}
+To be pedantic, to get a prediction of the survival probability, you also need the Breslow estimator of the baseline hazard. Note that the predictions are still subject to the proportional hazards assumption.
+:::
+
+## Cox example
+
+```{r}
+library(survival)
+head(rotterdam)
+
+sdata <- rotterdam
+
+cfit <- coxph(Surv(dtime, death) ~ hormon + age + meno + grade + er, 
+              data = sdata, ties = "breslow")
+sdata0 <- sdata1 <- sdata
+sdata0$hormon <- 0
+sdata1$hormon <- 1
+
+Ey0t <- survfit(cfit, newdata = sdata0, se.fit = FALSE)
+Ey1t <- survfit(cfit, newdata = sdata1, se.fit = FALSE)
+
+mean(Ey1t$surv[max(which(Ey1t$time <= 3000)), ]) - 
+  mean(Ey0t$surv[max(which(Ey0t$time <= 3000)), ])
+```
+
+or use `stdCoxph`
+
+```{r}
+stdcfit <- stdCoxph(cfit, data = sdata, X = "hormon", x = c(0, 1), 
+                    t = 3000)
+summary(stdcfit, contrast = "difference", reference = 0)
+
+```
+
+
+
+## Summary and comments
+
+1. Regression standardization is a method to estimate causal effects, for all types of exposures (binary, categorical, continuous)
+2. It works when the outcome model is correctly specified for confounding, i.e., all confounders are included in the model in the correct functional form (nonlinearities, interactions, etc.)
+3. Basic steps: 
+    a. Fit an outcome regression model (can also fit two, separately by the exposure levels). Use diagnostics to make sure the model is as flexible as it needs to be
+    b. Create copies of the data, and set the exposure levels to the desired levels for the contrast
+    c. Predict the potential outcome for each individual given their observed covariates
+    d. Take the means and construct the contrast of interest (difference or ratio)
+
+## Next time
+
+```{r}
+#| echo: false
+g2 <- dagitty( "dag {
+    X -> Y
+    C -> Y
+    C -> X
+}")
+coordinates(g2) <- list(x = c(C = 1.5, X = 1, Y = 2), 
+                        y = c(C = 2, X = 1, Y = 1))
+
+plot(g2)
+```
+
