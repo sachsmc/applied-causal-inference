@@ -1,0 +1,183 @@
+---
+title: "Inverse probability of treatment weighting and double robustness"
+subtitle: "Causal inference series"
+author: "Michael C Sachs"
+format: 
+    revealjs:
+      scrollable: true
+      max-scale: 1
+      min-scale: 1
+execute:
+  echo: true
+---
+
+
+
+## Example
+
+::: {.callout-tip}
+# The scientific question
+
+Does drinking coffee in childhood stunt growth? 
+:::
+
+In the __ideal study__
+
+1. We would enroll children aged 10 - 12 
+2. Randomize them to drink coffee versus placebo
+3. Follow them up for 8 years (very closely to ensure compliance)
+4. Measure height at age 18 - 20
+5. Causal parameter of interest is 
+
+$$
+E\{Y(X = 1)\} - E\{Y(X = 0)\}
+$$
+    
+
+## A confounded setting
+
+The more typical scenario since we can't force children to drink coffee:
+
+```{r}
+#| echo: false
+
+library(dagitty)
+
+g2 <- dagitty( "dag {
+    X -> Y
+    C -> Y
+    C -> X
+}")
+coordinates(g2) <- list(x = c(C = 1.5, X = 1, Y = 2), 
+                        y = c(C = 2, X = 1, Y = 1))
+
+plot(g2)
+```
+
+Last time we focused on the _g-formula_ and _regression standardization_ to deal with the $C \rightarrow Y$ relationship. 
+
+## Getting balance in the sample
+
+Instead of modeling $C \rightarrow Y$, let's focus on the $C \rightarrow X$ relationship. 
+
+If we can rebalance the sample so that there is no association between $C$ and $X$ in the sample, then it will look like a randomized trial: 
+
+```{r}
+#| echo: false
+g1 <- dagitty( "dag {
+    X -> Y
+    C -> Y
+}")
+coordinates(g1) <- list(x = c(C = 1.5, X = 1, Y = 2), 
+                        y = c(C = 2, X = 1, Y = 1))
+
+plot(g1)
+```
+
+## Propensity scores
+
+1. Compute $e(c_i) = P(X_i = 1 | C_i = c_i)$, the probability of treatment given the observed covariates $c_i$
+2. Compute the propensity of treatment or non-treatment weights for each subject in your sample
+$$W(X_i,c_i)=\frac{X_i}{e(c_i)}+\frac{1-X_i}{1-e(c_i)}$$
+This is one over the probability of treatment for the treated individuals and one over the probability of control for the control individuals. 
+3. Compute the weighted average: 
+$$
+\frac{1}{n}\sum_{i = 1}^n X_i Y_i W(X_i, c_i) - (1 - X_i) Y_i W(X_i, c_i)
+$$
+
+
+## R example
+
+```{r}
+#| echo: true
+n <- 800
+C <- rnorm(n)
+X <- rbinom(n, 1, plogis(-1 + 2 * C))
+Y <- 1 + 1 * X + C + .5 * X * C + rnorm(n)
+simdata <- data.frame(C, Y, X)
+
+e.mod <- glm(X ~ C, data = simdata, family = binomial)
+e.hat <- predict(e.mod, type = "response")
+
+simdata$W <- simdata$X  / e.hat + (1 - simdata$X) / (1 - e.hat)
+
+with(simdata, mean(X * Y * W - (1 - X) * Y * W))
+```
+
+## Notes and conditions
+
+1. This is a valid estimate of the causal effect only if $C$ is the only confounder (i.e., there is not unmeasured confounding). 
+2. With continuous or numerous confounders, we usual need a model (e.g., logistic regression). Then we have instead $e(c, \hat{\alpha})$, the estimated propensity score based on the model. This model need to be correctly specified to get a valid estimate of the causal effect.
+3. Inference -- you need to take into account the uncertainty in estimating the propensity score. Hence the whole procedure should be bootstrapped (including estimating the propensity score model).
+
+## When to use weighting vs standardization?
+
+Not always clear cut answer
+
+1. Are you more confident in your outcome model or your treatment assignment model? 
+2. Sometimes standardization is more efficient, sometimes weighting is. 
+3. Beware of extreme weights (very large values that can influence the results)
+
+
+## Doubly robust estimation
+
+If you are not sure, use both!
+
+
+Key reference/review: Funk MJ, Westreich D, Wiesen C, Stürmer T, Brookhart MA, Davidian M. Doubly robust estimation of causal effects. American journal of epidemiology 2011; 173(7): 761–767.
+
+$$
+\frac{1}{n}\sum_{i = 1}^n\frac{Y_i X_i}{\hat{p}_i} - \frac{\hat{Y}_{i1}(X_i - \hat{p}_i)}{\hat{p}_i} - \frac{Y_i (1 - X_i)}{1 - \hat{p}_i} - \frac{\hat{Y}_{i0}(X_i - \hat{p}_i)}{1 - \hat{p}_i}.  
+$$
+
+where $\hat{Y}_{i1}$ is the predicted outcome under the outcome model for $X = 1$ and likewise for $\hat{Y}_{i0}$
+
+## R code example
+
+```{r}
+data <- AF::clslowbwt
+head(data)
+## propensity score fit
+
+pwfit <- glm(smoker ~ race * age * lwt + I(age^2) + I(lwt^2), data = data, 
+             family = "binomial")
+phat <- predict(pwfit, type = "response")
+
+## single outcome model, unweighted
+
+outfit.unwt <- glm(bwt ~ smoker * (race + age + lwt) + I(age^2) + I(lwt^2), 
+              data = data, family = "gaussian")
+
+## dummy data, where we set X to 0 and 1
+
+data0 <- data1 <- data
+data0$smoker <- 0
+data1$smoker <- 1
+
+dr1 <- data$bwt * (data$smoker == 1) / phat - 
+  predict(outfit.unwt, newdata = data1, type = "response") * 
+  ((data$smoker == 1) - phat) / phat
+dr0 <- data$bwt * (data$smoker == 0) / (1 - phat) + 
+  predict(outfit.unwt, newdata = data0, type = "response") * 
+  ((data$smoker == 1) - phat) / (1 - phat)
+
+ATEfunk <- mean(dr1) - mean(dr0)  
+ATEfunk
+```
+
+
+## Common misconceptions
+
+1. Using weighting in addition to adjustment does not allow you to adjust for "residual" confounding -- the weight model needs to include all confounders, not just the ones that were not adjusted for in the outcome model
+2. It is not sufficient to just use a regression model and propensity score weights -- they need to be combined in a specific way in order for the double-robustness property to hold
+3. Inference is trickier than it seems. The easiest thing to do is bootstrap the whole procedure. 
+
+
+
+## Going further
+
+
+1. Improving efficiency and robustness: Targeted minimum loss based estimation (TMLE)
+2. Matching using the propensity score -- creating a balanced sample
+3. What is there is unmeasured confounding? Sensitivity analysis, quantitative bias analysis, causal bounds
+

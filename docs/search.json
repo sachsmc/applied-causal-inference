@@ -105,139 +105,6 @@
     "text": "Testing your understanding\nTrue or false?\n\nMike believes that you should never use logistic regression.\nDAGs are the only way to convey your causal assumptions."
   },
   {
-    "objectID": "index.html",
-    "href": "index.html",
-    "title": "Presentations",
-    "section": "",
-    "text": "Hazards of hazard ratios\n\n\nCausal inference series\n\n\n\n\n\n\n\n \n\n\n\n\n\n\nRegression and Standardization\n\n\nCausal inference series\n\n\n\n\n\n\n\n \n\n\n\n\n\n\nThe Causal Roadmap\n\n\nCausal inference series\n\n\n\n\n\n\n\n \n\n\n\n\nNo matching items"
-  },
-  {
-    "objectID": "regression/regression.html#example",
-    "href": "regression/regression.html#example",
-    "title": "Regression and Standardization",
-    "section": "Example",
-    "text": "Example\n\n\n\n\n\n\nThe scientific question\n\n\nDoes drinking coffee in childhood stunt growth?\n\n\n\nIn the ideal study\n\nWe would enroll children aged 10 - 12\nRandomize them to drink coffee versus placebo\nFollow them up for 8 years (very closely to ensure compliance)\nMeasure height at age 18 - 20\nCausal parameter of interest is\n\n\\[\nE\\{Y(X = 1)\\} - E\\{Y(X = 0)\\}\n\\]"
-  },
-  {
-    "objectID": "regression/regression.html#identifiability",
-    "href": "regression/regression.html#identifiability",
-    "title": "Regression and Standardization",
-    "section": "Identifiability",
-    "text": "Identifiability\nIs the effect of interest identifiable from these data?\nYes! The dag is simple in this case:"
-  },
-  {
-    "objectID": "regression/regression.html#estimation",
-    "href": "regression/regression.html#estimation",
-    "title": "Regression and Standardization",
-    "section": "Estimation",
-    "text": "Estimation\nOur usual estimand is\n\\[\nE(Y | X = 1) - E(Y | X = 0).\n\\]\nThis defines an estimator of the causal parameter because\n\\[\nE(Y | X = x) = E\\{Y(X = x) | X = x\\}\n\\] which is always true (sometimes called the consistency assumption/axiom).\nBecause of randomization, the potential outcomes are independent of the treatment assignment: \\[\nE\\{Y(X = x) | X = x\\} = E\\{Y(X = x)\\}\n\\]"
-  },
-  {
-    "objectID": "regression/regression.html#estimation-continued",
-    "href": "regression/regression.html#estimation-continued",
-    "title": "Regression and Standardization",
-    "section": "Estimation continued",
-    "text": "Estimation continued\nAn estimator is \\[\n\\frac{\\sum_i Y_i X_i}{\\sum_i X_i} - \\frac{\\sum_i Y_i (1 - X_i)}{\\sum_i (1 - X_i)}\n\\] which is what you get from a t-test.\nThis is not the only possible estimator. It is consistent for the causal effect of interest, which means that as the sample size increases, the estimator will approach the truth. There are other properties to consider\n\nrobustness, sensitivity of the estimator to the assumptions (not so relevant for this example)\nefficiency, how precise the estimator is compared to alternatives"
-  },
-  {
-    "objectID": "regression/regression.html#alternative-estimand",
-    "href": "regression/regression.html#alternative-estimand",
-    "title": "Regression and Standardization",
-    "section": "Alternative estimand",
-    "text": "Alternative estimand\nLinear regression adjusted for \\(C\\):\n\\[\nE(Y | X, C) = \\beta_0 + \\beta_1 X + \\beta_2 C\n\\]\nAs long as there is no interaction, \\(\\beta_1\\) has the interpretation \\(E(Y | X = 1) - E(Y | X = 0)\\), so what’s the difference?\nThe estimator is different from the t-test, and it involves \\(C\\)"
-  },
-  {
-    "objectID": "regression/regression.html#simulation",
-    "href": "regression/regression.html#simulation",
-    "title": "Regression and Standardization",
-    "section": "Simulation",
-    "text": "Simulation\n\ngenerate_ests <- function(n = 300) {\n  X <- rbinom(n, 1, .5)\n  C <- rnorm(n)\n  Y <- 1 + 1 * X + C + rnorm(n)\n  \n  c(ttest = t.test(Y ~ X)$estimate |> diff(), \n    lm = lm(Y ~ X + C)$coefficients[2])\n\n}\n\nsimul <- t(replicate(1e3, generate_ests()))\n\nsummary(simul) \n\n ttest.mean in group 1      lm.X       \n Min.   :0.4874        Min.   :0.6407  \n 1st Qu.:0.8882        1st Qu.:0.9159  \n Median :0.9962        Median :0.9953  \n Mean   :0.9969        Mean   :0.9968  \n 3rd Qu.:1.1065        3rd Qu.:1.0707  \n Max.   :1.4630        Max.   :1.3408  \n\napply(simul, 2, sd)\n\nttest.mean in group 1                  lm.X \n            0.1586819             0.1145141 \n\n\nIt gives the same answer, and is much more efficient. What are the drawbacks?\nWe need to get the outcome model correct, so it is potentially less robust.\nHowever, linear regression is quite robust, it is hard to get the outcome model wrong enough to make a difference."
-  },
-  {
-    "objectID": "regression/regression.html#simulation-2",
-    "href": "regression/regression.html#simulation-2",
-    "title": "Regression and Standardization",
-    "section": "Simulation 2",
-    "text": "Simulation 2\n\ngenerate_ests2 <- function(n = 300) {\n  X <- rbinom(n, 1, .5)\n  C <- rnorm(n)\n  U <- rnorm(n)\n  Y <- 1 + 1 * X + 5 * X * (C > 1) - 3 * (C < 1) + rnorm(n)\n  \n  c(ttest = t.test(Y ~ X)$estimate |> diff(), \n    lm = lm(Y ~ X + C)$coefficients[2])\n\n}\n\nsimul <- t(replicate(1e3, generate_ests2()))\n\nsummary(simul) \n\n ttest.mean in group 1      lm.X      \n Min.   :0.979         Min.   :1.158  \n 1st Qu.:1.625         1st Qu.:1.639  \n Median :1.819         Median :1.804  \n Mean   :1.815         Mean   :1.794  \n 3rd Qu.:1.995         3rd Qu.:1.950  \n Max.   :2.655         Max.   :2.573  \n\napply(simul, 2, sd)\n\nttest.mean in group 1                  lm.X \n            0.2822757             0.2317679 \n\n\n\n\n\n\n\n\nWarning\n\n\nLessons from linear regression do not often apply to other types of regression. For example, the coefficient in an adjusted logistic model is not an estimand for the causal difference."
-  },
-  {
-    "objectID": "regression/regression.html#a-confounded-setting",
-    "href": "regression/regression.html#a-confounded-setting",
-    "title": "Regression and Standardization",
-    "section": "A confounded setting",
-    "text": "A confounded setting\nThe more typical scenario since we can’t force children to drink coffee:\n\nHow do we estimate this now?"
-  },
-  {
-    "objectID": "regression/regression.html#the-g-forumla",
-    "href": "regression/regression.html#the-g-forumla",
-    "title": "Regression and Standardization",
-    "section": "The g-forumla",
-    "text": "The g-forumla\nLet’s focus on the first term \\(E\\{Y(X = 1)\\}\\)\n\\[\nE\\{Y(1)\\} = \\sum_c E(Y(1) | C = c) P(C = c) = \\sum_c E(Y(1) | C = c, X = 1) P(C = c)\n\\] \\[\n= \\sum_c E(Y | C = c, X = 1) P(C = c)\n\\] under the assumptions in the dag.\nThe first component inside the sum is an outcome model, we can use a prediction from linear regression.\nFor the second component, we can use the empirical distribution. This is based on the random sampling principle: if I have \\(n\\) subjects in my sample, and the \\(i\\) th subject’s covariates are \\(C_i\\), my best guess of the probability of observing data like \\(C_i\\) is \\(1/n\\)"
-  },
-  {
-    "objectID": "regression/regression.html#regression-standardization",
-    "href": "regression/regression.html#regression-standardization",
-    "title": "Regression and Standardization",
-    "section": "Regression standardization",
-    "text": "Regression standardization\nThe regression standardization estimator of the g-formula is\n\\[\n\\hat{E}\\{Y(1)\\} = \\sum_{i=1}^n \\hat{E}(Y | X = 1, C = C_i) \\cdot \\frac{1}{n}.\n\\]\nThe basic approach:\n\nFit an outcome model involving the exposure of interest and confounders\nCopy the data used to fit the model and then:\n\nReplace observed values of \\(X\\) with 1, and get predictions from the model: \\(\\hat{E}(Y_i(1))\\)\nReplace observed values of \\(X\\) with 0, and get predictions from the model: \\(\\hat{E}(Y_i(0))\\)\n\nTake the mean and then the difference: \\(\\frac{1}{n}\\sum_i \\hat{E}(Y_i(1)) - \\hat{E}(Y_i(0))\\)"
-  },
-  {
-    "objectID": "regression/regression.html#linear-regression",
-    "href": "regression/regression.html#linear-regression",
-    "title": "Regression and Standardization",
-    "section": "Linear regression",
-    "text": "Linear regression\nExample, using simulated data:\n\nn <- 800\nC <- rnorm(n)\nX <- rbinom(n, 1, plogis(-1 + 2 * C))\nY <- 1 + 1 * X + C + .5 * X * C + rnorm(n)\nsimdata <- data.frame(C, Y, X)\n\nfit <- glm(Y ~ C + X + C:X, data = simdata)\nsimdata0 <- simdata1 <- simdata\n\nsimdata0$X <- 0\nsimdata1$X <- 1\n\nEYi_1 <- predict(fit, newdata = simdata1)\nEYi_0 <- predict(fit, newdata = simdata0)\n\nmean(EYi_1) - mean(EYi_0)\n\n[1] 1.048538"
-  },
-  {
-    "objectID": "regression/regression.html#inference",
-    "href": "regression/regression.html#inference",
-    "title": "Regression and Standardization",
-    "section": "Inference?",
-    "text": "Inference?\nOne option is to use the bootstrap:\n\nB <- 1000\nbootests <- rep(NA, B)\nfor(i in 1:B) {\n  simdata.star <- simdata[sample(1:nrow(simdata), \n                                 nrow(simdata), replace = TRUE), ]\n\n  fit <- glm(Y ~ C + X + C:X, data = simdata.star)\n  simdata0 <- simdata1 <- simdata.star\n\n  simdata0$X <- 0\n  simdata1$X <- 1\n\n  bootests[i] <- mean(predict(fit, newdata = simdata1)) - \n    mean(predict(fit, newdata = simdata0))\n}\n\nsd(bootests)\n\n[1] 0.1003283\n\nquantile(bootests, c(0.025, 0.9756))\n\n     2.5%    97.56% \n0.8594518 1.2515164 \n\n\nOr you can use the stdReg package\n\nlibrary(\"stdReg\")\n\nstdfit <- stdGlm(fit, data = simdata, X = \"X\", x = c(0, 1))\nsummary(stdfit, contrast = \"difference\", reference = 0)\n\n\nFormula: Y ~ C + X + C:X\nFamily: gaussian \nLink function: identity \nExposure:  X \nReference level:  X = 0 \nContrast:  difference \n\n  Estimate Std. Error lower 0.95 upper 0.95\n0    0.000      0.000      0.000      0.000\n1    0.734      0.106      0.526      0.943"
-  },
-  {
-    "objectID": "regression/regression.html#logistic-regression",
-    "href": "regression/regression.html#logistic-regression",
-    "title": "Regression and Standardization",
-    "section": "Logistic regression",
-    "text": "Logistic regression\nWith a binary outcome, we would tend to use logistic regression.\n\\[\n\\mbox{logit}(p\\{Y = 1 | X, C\\}) = \\beta_0 + \\beta_1 X + \\beta_2 C\n\\]\nbut the coefficient \\(\\beta_1\\) is not a marginal causal contrast, i.e., there is no function \\(g\\) such that\n\\[\n\\beta_1 = g\\{Y(1), Y(0)\\},\n\\] the reason being that the nonlinear function does not simplify, so that it continues to depend on \\(C\\), it is a conditional causal contrast. Besides, we want the risk difference or risk ratio, so we need to standardize with logistic regression."
-  },
-  {
-    "objectID": "regression/regression.html#binary-example",
-    "href": "regression/regression.html#binary-example",
-    "title": "Regression and Standardization",
-    "section": "Binary example",
-    "text": "Binary example\nThe steps are nearly identical:\n\nn <- 800\nC <- rnorm(n)\nX <- rbinom(n, 1, plogis(-1 + 2 * C))\nY <- rbinom(n, 1, plogis(1 + 1 * X + C + .5 * X * C))\nsimdata <- data.frame(C, Y, X)\n\nfit <- glm(Y ~ C + X + C:X, data = simdata, family = \"binomial\")\nsimdata0 <- simdata1 <- simdata\n\nsimdata0$X <- 0\nsimdata1$X <- 1\n\nEYi_1 <- predict(fit, newdata = simdata1, type = \"response\")\nEYi_0 <- predict(fit, newdata = simdata0, type = \"response\")\n\nmean(EYi_1) - mean(EYi_0)\n\n[1] 0.1169359\n\nmean(EYi_1) / mean(EYi_0)\n\n[1] 1.16908\n\n\nOr use the stdReg package\n\nstdfit <- stdGlm(fit, X = \"X\", x = c(0,1), data = simdata)\nsummary(stdfit, contrast = \"difference\", reference = 0)\n\n\nFormula: Y ~ C + X + C:X\nFamily: binomial \nLink function: logit \nExposure:  X \nReference level:  X = 0 \nContrast:  difference \n\n  Estimate Std. Error lower 0.95 upper 0.95\n0    0.000       0.00     0.0000      0.000\n1    0.117       0.05     0.0189      0.215\n\nsummary(stdfit, contrast = \"ratio\", reference = 0)\n\n\nFormula: Y ~ C + X + C:X\nFamily: binomial \nLink function: logit \nExposure:  X \nReference level:  X = 0 \nContrast:  ratio \n\n  Estimate Std. Error lower 0.95 upper 0.95\n0     1.00     0.0000       1.00       1.00\n1     1.17     0.0741       1.02       1.31"
-  },
-  {
-    "objectID": "regression/regression.html#cox-regression-and-other-survival-models",
-    "href": "regression/regression.html#cox-regression-and-other-survival-models",
-    "title": "Regression and Standardization",
-    "section": "Cox regression and other survival models",
-    "text": "Cox regression and other survival models\nFor a time to event outcome \\(Y\\), the Cox model assumes \\[\n\\lim_{\\delta \\rightarrow 0} \\frac{1}{\\delta}p\\{t \\leq Y < t + \\delta | Y \\geq t, X, C\\} = \\lambda_0(t) \\exp(\\beta_1 X + \\beta_2 C)\n\\]\n\\(\\beta_1\\) is not generally a causal contrast, for different reasons than the logistic model. Hence we need to standardize to get a contrast of survival probabilities such as \\[\np\\{Y(1) > \\tau\\} - p\\{Y(0) > \\tau\\}\n\\] for a given time \\(\\tau\\).\nThe standardization procedure is basically the same\n\n\n\n\n\n\nNote\n\n\nTo be pedantic, to get a prediction of the survival probability, you also need the Breslow estimator of the baseline hazard. Note that the predictions are still subject to the proportional hazards assumption."
-  },
-  {
-    "objectID": "regression/regression.html#cox-example",
-    "href": "regression/regression.html#cox-example",
-    "title": "Regression and Standardization",
-    "section": "Cox example",
-    "text": "Cox example\n\nlibrary(survival)\nhead(rotterdam)\n\n     pid year age meno  size grade nodes pgr  er hormon chemo rtime recur dtime\n1393   1 1992  74    1  <=20     3     0  35 291      0     0  1799     0  1799\n1416   2 1984  79    1 20-50     3     0  36 611      0     0  2828     0  2828\n2962   3 1983  44    0  <=20     2     0 138   0      0     0  6012     0  6012\n1455   4 1985  70    1 20-50     3     0   0  12      0     0  2624     0  2624\n977    5 1983  75    1  <=20     3     0 260 409      0     0  4915     0  4915\n617    6 1983  52    0  <=20     3     0 139 303      0     0  5888     0  5888\n     death\n1393     0\n1416     0\n2962     0\n1455     0\n977      0\n617      0\n\nsdata <- rotterdam\n\ncfit <- coxph(Surv(dtime, death) ~ hormon + age + meno + grade + er, \n              data = sdata, ties = \"breslow\")\nsdata0 <- sdata1 <- sdata\nsdata0$hormon <- 0\nsdata1$hormon <- 1\n\nEy0t <- survfit(cfit, newdata = sdata0, se.fit = FALSE)\nEy1t <- survfit(cfit, newdata = sdata1, se.fit = FALSE)\n\nmean(Ey1t$surv[max(which(Ey1t$time <= 3000)), ]) - \n  mean(Ey0t$surv[max(which(Ey0t$time <= 3000)), ])\n\n[1] -0.07465547\n\n\nor use stdCoxph\n\nstdcfit <- stdCoxph(cfit, data = sdata, X = \"hormon\", x = c(0, 1), \n                    t = 3000)\nsummary(stdcfit, contrast = \"difference\", reference = 0)\n\n\nFormula: Surv(dtime, death) ~ hormon + age + meno + grade + er\nExposure:  hormon \nReference level:  hormon = 0 \nContrast:  difference \nSurvival functions evaluated at t = 3000 \n\n  Estimate Std. Error lower 0.95 upper 0.95\n0   0.0000     0.0000      0.000      0.000\n1  -0.0747     0.0274     -0.128     -0.021"
-  },
-  {
-    "objectID": "regression/regression.html#summary-and-comments",
-    "href": "regression/regression.html#summary-and-comments",
-    "title": "Regression and Standardization",
-    "section": "Summary and comments",
-    "text": "Summary and comments\n\nRegression standardization is a method to estimate causal effects, for all types of exposures (binary, categorical, continuous)\nIt works when the outcome model is correctly specified for confounding, i.e., all confounders are included in the model in the correct functional form (nonlinearities, interactions, etc.)\nBasic steps:\n\nFit an outcome regression model (can also fit two, separately by the exposure levels). Use diagnostics to make sure the model is as flexible as it needs to be\nCreate copies of the data, and set the exposure levels to the desired levels for the contrast\nPredict the potential outcome for each individual given their observed covariates\nTake the means and construct the contrast of interest (difference or ratio)"
-  },
-  {
-    "objectID": "regression/regression.html#next-time",
-    "href": "regression/regression.html#next-time",
-    "title": "Regression and Standardization",
-    "section": "Next time",
-    "text": "Next time"
-  },
-  {
     "objectID": "hazards/hazards-pres.html#defining-features-of-survival-data",
     "href": "hazards/hazards-pres.html#defining-features-of-survival-data",
     "title": "Hazards of hazard ratios",
@@ -390,5 +257,222 @@
     "title": "Hazards of hazard ratios",
     "section": "Practicalities",
     "text": "Practicalities\nIPTW survival curves to adjust for confounding (how to do inference?)\nMore options:\n\nstdReg R package, to do standardization to adjust for covariate while estimating survival probabilities\neventglm R package, regression modeling of survival probabilities and restricted mean survival\ntimereg R package, direct modeling of the same\nAccelerated failure time models, which directly model effects on survival (see reference 5)"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Presentations",
+    "section": "",
+    "text": "Hazards of hazard ratios\n\n\nCausal inference series\n\n\n\n\n\n\n\n \n\n\n\n\n\n\nInverse probability of treatment weighting and double robustness\n\n\nCausal inference series\n\n\n\n\n\n\n\n \n\n\n\n\n\n\nRegression and Standardization\n\n\nCausal inference series\n\n\n\n\n\n\n\n \n\n\n\n\n\n\nThe Causal Roadmap\n\n\nCausal inference series\n\n\n\n\n\n\n\n \n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "LICENSE.html",
+    "href": "LICENSE.html",
+    "title": "Notes on Applied Causal Inference",
+    "section": "",
+    "text": "MIT License\nCopyright (c) 2023 Michael C Sachs\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the “Software”), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\nTHE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
+  },
+  {
+    "objectID": "regression/regression.html#example",
+    "href": "regression/regression.html#example",
+    "title": "Regression and Standardization",
+    "section": "Example",
+    "text": "Example\n\n\n\n\n\n\nThe scientific question\n\n\nDoes drinking coffee in childhood stunt growth?\n\n\n\nIn the ideal study\n\nWe would enroll children aged 10 - 12\nRandomize them to drink coffee versus placebo\nFollow them up for 8 years (very closely to ensure compliance)\nMeasure height at age 18 - 20\nCausal parameter of interest is\n\n\\[\nE\\{Y(X = 1)\\} - E\\{Y(X = 0)\\}\n\\]"
+  },
+  {
+    "objectID": "regression/regression.html#identifiability",
+    "href": "regression/regression.html#identifiability",
+    "title": "Regression and Standardization",
+    "section": "Identifiability",
+    "text": "Identifiability\nIs the effect of interest identifiable from these data?\nYes! The dag is simple in this case:"
+  },
+  {
+    "objectID": "regression/regression.html#estimation",
+    "href": "regression/regression.html#estimation",
+    "title": "Regression and Standardization",
+    "section": "Estimation",
+    "text": "Estimation\nOur usual estimand is\n\\[\nE(Y | X = 1) - E(Y | X = 0).\n\\]\nThis defines an estimator of the causal parameter because\n\\[\nE(Y | X = x) = E\\{Y(X = x) | X = x\\}\n\\] which is always true (sometimes called the consistency assumption/axiom).\nBecause of randomization, the potential outcomes are independent of the treatment assignment: \\[\nE\\{Y(X = x) | X = x\\} = E\\{Y(X = x)\\}\n\\]"
+  },
+  {
+    "objectID": "regression/regression.html#estimation-continued",
+    "href": "regression/regression.html#estimation-continued",
+    "title": "Regression and Standardization",
+    "section": "Estimation continued",
+    "text": "Estimation continued\nAn estimator is \\[\n\\frac{\\sum_i Y_i X_i}{\\sum_i X_i} - \\frac{\\sum_i Y_i (1 - X_i)}{\\sum_i (1 - X_i)}\n\\] which is what you get from a t-test.\nThis is not the only possible estimator. It is consistent for the causal effect of interest, which means that as the sample size increases, the estimator will approach the truth. There are other properties to consider\n\nrobustness, sensitivity of the estimator to the assumptions (not so relevant for this example)\nefficiency, how precise the estimator is compared to alternatives"
+  },
+  {
+    "objectID": "regression/regression.html#alternative-estimand",
+    "href": "regression/regression.html#alternative-estimand",
+    "title": "Regression and Standardization",
+    "section": "Alternative estimand",
+    "text": "Alternative estimand\nLinear regression adjusted for \\(C\\):\n\\[\nE(Y | X, C) = \\beta_0 + \\beta_1 X + \\beta_2 C\n\\]\nAs long as there is no interaction, \\(\\beta_1\\) has the interpretation \\(E(Y | X = 1) - E(Y | X = 0)\\), so what’s the difference?\nThe estimator is different from the t-test, and it involves \\(C\\)"
+  },
+  {
+    "objectID": "regression/regression.html#simulation",
+    "href": "regression/regression.html#simulation",
+    "title": "Regression and Standardization",
+    "section": "Simulation",
+    "text": "Simulation\n\ngenerate_ests <- function(n = 300) {\n  X <- rbinom(n, 1, .5)\n  C <- rnorm(n)\n  Y <- 1 + 1 * X + C + rnorm(n)\n  \n  c(ttest = t.test(Y ~ X)$estimate |> diff(), \n    lm = lm(Y ~ X + C)$coefficients[2])\n\n}\n\nsimul <- t(replicate(1e3, generate_ests()))\n\nsummary(simul) \n\n ttest.mean in group 1      lm.X       \n Min.   :0.4736        Min.   :0.6421  \n 1st Qu.:0.8879        1st Qu.:0.9211  \n Median :1.0021        Median :1.0017  \n Mean   :0.9977        Mean   :1.0017  \n 3rd Qu.:1.1081        3rd Qu.:1.0774  \n Max.   :1.4981        Max.   :1.3293  \n\napply(simul, 2, sd)\n\nttest.mean in group 1                  lm.X \n            0.1594874             0.1144657 \n\n\nIt gives the same answer, and is much more efficient. What are the drawbacks?\nWe need to get the outcome model correct, so it is potentially less robust.\nHowever, linear regression is quite robust, it is hard to get the outcome model wrong enough to make a difference."
+  },
+  {
+    "objectID": "regression/regression.html#simulation-2",
+    "href": "regression/regression.html#simulation-2",
+    "title": "Regression and Standardization",
+    "section": "Simulation 2",
+    "text": "Simulation 2\n\ngenerate_ests2 <- function(n = 300) {\n  X <- rbinom(n, 1, .5)\n  C <- rnorm(n)\n  U <- rnorm(n)\n  Y <- 1 + 1 * X + 5 * X * (C > 1) - 3 * (C < 1) + rnorm(n)\n  \n  c(ttest = t.test(Y ~ X)$estimate |> diff(), \n    lm = lm(Y ~ X + C)$coefficients[2])\n\n}\n\nsimul <- t(replicate(1e3, generate_ests2()))\n\nsummary(simul) \n\n ttest.mean in group 1      lm.X      \n Min.   :0.9392        Min.   :1.055  \n 1st Qu.:1.6067        1st Qu.:1.631  \n Median :1.7841        Median :1.781  \n Mean   :1.7890        Mean   :1.788  \n 3rd Qu.:1.9770        3rd Qu.:1.940  \n Max.   :2.6779        Max.   :2.571  \n\napply(simul, 2, sd)\n\nttest.mean in group 1                  lm.X \n            0.2772902             0.2362267 \n\n\n\n\n\n\n\n\nWarning\n\n\nLessons from linear regression do not often apply to other types of regression. For example, the coefficient in an adjusted logistic model is not an estimand for the causal difference."
+  },
+  {
+    "objectID": "regression/regression.html#a-confounded-setting",
+    "href": "regression/regression.html#a-confounded-setting",
+    "title": "Regression and Standardization",
+    "section": "A confounded setting",
+    "text": "A confounded setting\nThe more typical scenario since we can’t force children to drink coffee:\n\nHow do we estimate this now?"
+  },
+  {
+    "objectID": "regression/regression.html#the-g-forumla",
+    "href": "regression/regression.html#the-g-forumla",
+    "title": "Regression and Standardization",
+    "section": "The g-forumla",
+    "text": "The g-forumla\nLet’s focus on the first term \\(E\\{Y(X = 1)\\}\\)\n\\[\nE\\{Y(1)\\} = \\sum_c E(Y(1) | C = c) P(C = c) = \\sum_c E(Y(1) | C = c, X = 1) P(C = c)\n\\] \\[\n= \\sum_c E(Y | C = c, X = 1) P(C = c)\n\\] under the assumptions in the dag.\nThe first component inside the sum is an outcome model, we can use a prediction from linear regression.\nFor the second component, we can use the empirical distribution. This is based on the random sampling principle: if I have \\(n\\) subjects in my sample, and the \\(i\\) th subject’s covariates are \\(C_i\\), my best guess of the probability of observing data like \\(C_i\\) is \\(1/n\\)"
+  },
+  {
+    "objectID": "regression/regression.html#regression-standardization",
+    "href": "regression/regression.html#regression-standardization",
+    "title": "Regression and Standardization",
+    "section": "Regression standardization",
+    "text": "Regression standardization\nThe regression standardization estimator of the g-formula is\n\\[\n\\hat{E}\\{Y(1)\\} = \\sum_{i=1}^n \\hat{E}(Y | X = 1, C = C_i) \\cdot \\frac{1}{n}.\n\\]\nThe basic approach:\n\nFit an outcome model involving the exposure of interest and confounders\nCopy the data used to fit the model and then:\n\nReplace observed values of \\(X\\) with 1, and get predictions from the model: \\(\\hat{E}(Y_i(1))\\)\nReplace observed values of \\(X\\) with 0, and get predictions from the model: \\(\\hat{E}(Y_i(0))\\)\n\nTake the mean and then the difference: \\(\\frac{1}{n}\\sum_i \\hat{E}(Y_i(1)) - \\hat{E}(Y_i(0))\\)"
+  },
+  {
+    "objectID": "regression/regression.html#linear-regression",
+    "href": "regression/regression.html#linear-regression",
+    "title": "Regression and Standardization",
+    "section": "Linear regression",
+    "text": "Linear regression\nExample, using simulated data:\n\nn <- 800\nC <- rnorm(n)\nX <- rbinom(n, 1, plogis(-1 + 2 * C))\nY <- 1 + 1 * X + C + .5 * X * C + rnorm(n)\nsimdata <- data.frame(C, Y, X)\n\nfit <- glm(Y ~ C + X + C:X, data = simdata)\nsimdata0 <- simdata1 <- simdata\n\nsimdata0$X <- 0\nsimdata1$X <- 1\n\nEYi_1 <- predict(fit, newdata = simdata1)\nEYi_0 <- predict(fit, newdata = simdata0)\n\nmean(EYi_1) - mean(EYi_0)\n\n[1] 0.9900777"
+  },
+  {
+    "objectID": "regression/regression.html#inference",
+    "href": "regression/regression.html#inference",
+    "title": "Regression and Standardization",
+    "section": "Inference?",
+    "text": "Inference?\nOne option is to use the bootstrap:\n\nB <- 1000\nbootests <- rep(NA, B)\nfor(i in 1:B) {\n  simdata.star <- simdata[sample(1:nrow(simdata), \n                                 nrow(simdata), replace = TRUE), ]\n\n  fit <- glm(Y ~ C + X + C:X, data = simdata.star)\n  simdata0 <- simdata1 <- simdata.star\n\n  simdata0$X <- 0\n  simdata1$X <- 1\n\n  bootests[i] <- mean(predict(fit, newdata = simdata1)) - \n    mean(predict(fit, newdata = simdata0))\n}\n\nsd(bootests)\n\n[1] 0.09725708\n\nquantile(bootests, c(0.025, 0.9756))\n\n     2.5%    97.56% \n0.7975081 1.1795300 \n\n\nOr you can use the stdReg package\n\nlibrary(\"stdReg\")\n\nstdfit <- stdGlm(fit, data = simdata, X = \"X\", x = c(0, 1))\nsummary(stdfit, contrast = \"difference\", reference = 0)\n\n\nFormula: Y ~ C + X + C:X\nFamily: gaussian \nLink function: identity \nExposure:  X \nReference level:  X = 0 \nContrast:  difference \n\n  Estimate Std. Error lower 0.95 upper 0.95\n0    0.000     0.0000      0.000      0.000\n1    0.778     0.0998      0.582      0.973"
+  },
+  {
+    "objectID": "regression/regression.html#logistic-regression",
+    "href": "regression/regression.html#logistic-regression",
+    "title": "Regression and Standardization",
+    "section": "Logistic regression",
+    "text": "Logistic regression\nWith a binary outcome, we would tend to use logistic regression.\n\\[\n\\mbox{logit}(p\\{Y = 1 | X, C\\}) = \\beta_0 + \\beta_1 X + \\beta_2 C\n\\]\nbut the coefficient \\(\\beta_1\\) is not a marginal causal contrast, i.e., there is no function \\(g\\) such that\n\\[\n\\beta_1 = g\\{Y(1), Y(0)\\},\n\\] the reason being that the nonlinear function does not simplify, so that it continues to depend on \\(C\\), it is a conditional causal contrast. Besides, we want the risk difference or risk ratio, so we need to standardize with logistic regression."
+  },
+  {
+    "objectID": "regression/regression.html#binary-example",
+    "href": "regression/regression.html#binary-example",
+    "title": "Regression and Standardization",
+    "section": "Binary example",
+    "text": "Binary example\nThe steps are nearly identical:\n\nn <- 800\nC <- rnorm(n)\nX <- rbinom(n, 1, plogis(-1 + 2 * C))\nY <- rbinom(n, 1, plogis(1 + 1 * X + C + .5 * X * C))\nsimdata <- data.frame(C, Y, X)\n\nfit <- glm(Y ~ C + X + C:X, data = simdata, family = \"binomial\")\nsimdata0 <- simdata1 <- simdata\n\nsimdata0$X <- 0\nsimdata1$X <- 1\n\nEYi_1 <- predict(fit, newdata = simdata1, type = \"response\")\nEYi_0 <- predict(fit, newdata = simdata0, type = \"response\")\n\nmean(EYi_1) - mean(EYi_0)\n\n[1] 0.1231389\n\nmean(EYi_1) / mean(EYi_0)\n\n[1] 1.176667\n\n\nOr use the stdReg package\n\nstdfit <- stdGlm(fit, X = \"X\", x = c(0,1), data = simdata)\nsummary(stdfit, contrast = \"difference\", reference = 0)\n\n\nFormula: Y ~ C + X + C:X\nFamily: binomial \nLink function: logit \nExposure:  X \nReference level:  X = 0 \nContrast:  difference \n\n  Estimate Std. Error lower 0.95 upper 0.95\n0    0.000      0.000     0.0000      0.000\n1    0.123      0.049     0.0271      0.219\n\nsummary(stdfit, contrast = \"ratio\", reference = 0)\n\n\nFormula: Y ~ C + X + C:X\nFamily: binomial \nLink function: logit \nExposure:  X \nReference level:  X = 0 \nContrast:  ratio \n\n  Estimate Std. Error lower 0.95 upper 0.95\n0     1.00     0.0000       1.00       1.00\n1     1.18     0.0721       1.04       1.32"
+  },
+  {
+    "objectID": "regression/regression.html#cox-regression-and-other-survival-models",
+    "href": "regression/regression.html#cox-regression-and-other-survival-models",
+    "title": "Regression and Standardization",
+    "section": "Cox regression and other survival models",
+    "text": "Cox regression and other survival models\nFor a time to event outcome \\(Y\\), the Cox model assumes \\[\n\\lim_{\\delta \\rightarrow 0} \\frac{1}{\\delta}p\\{t \\leq Y < t + \\delta | Y \\geq t, X, C\\} = \\lambda_0(t) \\exp(\\beta_1 X + \\beta_2 C)\n\\]\n\\(\\beta_1\\) is not generally a causal contrast, for different reasons than the logistic model. Hence we need to standardize to get a contrast of survival probabilities such as \\[\np\\{Y(1) > \\tau\\} - p\\{Y(0) > \\tau\\}\n\\] for a given time \\(\\tau\\).\nThe standardization procedure is basically the same\n\n\n\n\n\n\nNote\n\n\nTo be pedantic, to get a prediction of the survival probability, you also need the Breslow estimator of the baseline hazard. Note that the predictions are still subject to the proportional hazards assumption."
+  },
+  {
+    "objectID": "regression/regression.html#cox-example",
+    "href": "regression/regression.html#cox-example",
+    "title": "Regression and Standardization",
+    "section": "Cox example",
+    "text": "Cox example\n\nlibrary(survival)\nhead(rotterdam)\n\n     pid year age meno  size grade nodes pgr  er hormon chemo rtime recur dtime\n1393   1 1992  74    1  <=20     3     0  35 291      0     0  1799     0  1799\n1416   2 1984  79    1 20-50     3     0  36 611      0     0  2828     0  2828\n2962   3 1983  44    0  <=20     2     0 138   0      0     0  6012     0  6012\n1455   4 1985  70    1 20-50     3     0   0  12      0     0  2624     0  2624\n977    5 1983  75    1  <=20     3     0 260 409      0     0  4915     0  4915\n617    6 1983  52    0  <=20     3     0 139 303      0     0  5888     0  5888\n     death\n1393     0\n1416     0\n2962     0\n1455     0\n977      0\n617      0\n\nsdata <- rotterdam\n\ncfit <- coxph(Surv(dtime, death) ~ hormon + age + meno + grade + er, \n              data = sdata, ties = \"breslow\")\nsdata0 <- sdata1 <- sdata\nsdata0$hormon <- 0\nsdata1$hormon <- 1\n\nEy0t <- survfit(cfit, newdata = sdata0, se.fit = FALSE)\nEy1t <- survfit(cfit, newdata = sdata1, se.fit = FALSE)\n\nmean(Ey1t$surv[max(which(Ey1t$time <= 3000)), ]) - \n  mean(Ey0t$surv[max(which(Ey0t$time <= 3000)), ])\n\n[1] -0.07465547\n\n\nor use stdCoxph\n\nstdcfit <- stdCoxph(cfit, data = sdata, X = \"hormon\", x = c(0, 1), \n                    t = 3000)\nsummary(stdcfit, contrast = \"difference\", reference = 0)\n\n\nFormula: Surv(dtime, death) ~ hormon + age + meno + grade + er\nExposure:  hormon \nReference level:  hormon = 0 \nContrast:  difference \nSurvival functions evaluated at t = 3000 \n\n  Estimate Std. Error lower 0.95 upper 0.95\n0   0.0000     0.0000      0.000      0.000\n1  -0.0747     0.0274     -0.128     -0.021"
+  },
+  {
+    "objectID": "regression/regression.html#summary-and-comments",
+    "href": "regression/regression.html#summary-and-comments",
+    "title": "Regression and Standardization",
+    "section": "Summary and comments",
+    "text": "Summary and comments\n\nRegression standardization is a method to estimate causal effects, for all types of exposures (binary, categorical, continuous)\nIt works when the outcome model is correctly specified for confounding, i.e., all confounders are included in the model in the correct functional form (nonlinearities, interactions, etc.)\nBasic steps:\n\nFit an outcome regression model (can also fit two, separately by the exposure levels). Use diagnostics to make sure the model is as flexible as it needs to be\nCreate copies of the data, and set the exposure levels to the desired levels for the contrast\nPredict the potential outcome for each individual given their observed covariates\nTake the means and construct the contrast of interest (difference or ratio)"
+  },
+  {
+    "objectID": "regression/regression.html#next-time",
+    "href": "regression/regression.html#next-time",
+    "title": "Regression and Standardization",
+    "section": "Next time",
+    "text": "Next time"
+  },
+  {
+    "objectID": "weighting/weighting.html#example",
+    "href": "weighting/weighting.html#example",
+    "title": "Inverse probability of treatment weighting and double robustness",
+    "section": "Example",
+    "text": "Example\n\n\n\n\n\n\nThe scientific question\n\n\nDoes drinking coffee in childhood stunt growth?\n\n\n\nIn the ideal study\n\nWe would enroll children aged 10 - 12\nRandomize them to drink coffee versus placebo\nFollow them up for 8 years (very closely to ensure compliance)\nMeasure height at age 18 - 20\nCausal parameter of interest is\n\n\\[\nE\\{Y(X = 1)\\} - E\\{Y(X = 0)\\}\n\\]"
+  },
+  {
+    "objectID": "weighting/weighting.html#a-confounded-setting",
+    "href": "weighting/weighting.html#a-confounded-setting",
+    "title": "Inverse probability of treatment weighting and double robustness",
+    "section": "A confounded setting",
+    "text": "A confounded setting\nThe more typical scenario since we can’t force children to drink coffee:\n\nLast time we focused on the g-formula and regression standardization to deal with the \\(C \\rightarrow Y\\) relationship."
+  },
+  {
+    "objectID": "weighting/weighting.html#getting-balance-in-the-sample",
+    "href": "weighting/weighting.html#getting-balance-in-the-sample",
+    "title": "Inverse probability of treatment weighting and double robustness",
+    "section": "Getting balance in the sample",
+    "text": "Getting balance in the sample\nInstead of modeling \\(C \\rightarrow Y\\), let’s focus on the \\(C \\rightarrow X\\) relationship.\nIf we can rebalance the sample so that there is no association between \\(C\\) and \\(X\\) in the sample, then it will look like a randomized trial:"
+  },
+  {
+    "objectID": "weighting/weighting.html#propensity-scores",
+    "href": "weighting/weighting.html#propensity-scores",
+    "title": "Inverse probability of treatment weighting and double robustness",
+    "section": "Propensity scores",
+    "text": "Propensity scores\n\nCompute \\(e(c_i) = P(X_i = 1 | C_i = c_i)\\), the probability of treatment given the observed covariates \\(c_i\\)\nCompute the propensity of treatment or non-treatment weights for each subject in your sample \\[W(X_i,c_i)=\\frac{X_i}{e(c_i)}+\\frac{1-X_i}{1-e(c_i)}\\] This is one over the probability of treatment for the treated individuals and one over the probability of control for the control individuals.\nCompute the weighted average: \\[\n\\frac{1}{n}\\sum_{i = 1}^n X_i Y_i W(X_i, c_i) - (1 - X_i) Y_i W(X_i, c_i)\n\\]"
+  },
+  {
+    "objectID": "weighting/weighting.html#r-example",
+    "href": "weighting/weighting.html#r-example",
+    "title": "Inverse probability of treatment weighting and double robustness",
+    "section": "R example",
+    "text": "R example\n\nn <- 800\nC <- rnorm(n)\nX <- rbinom(n, 1, plogis(-1 + 2 * C))\nY <- 1 + 1 * X + C + .5 * X * C + rnorm(n)\nsimdata <- data.frame(C, Y, X)\n\ne.mod <- glm(X ~ C, data = simdata, family = binomial)\ne.hat <- predict(e.mod, type = \"response\")\n\nsimdata$W <- simdata$X  / e.hat + (1 - simdata$X) / (1 - e.hat)\n\nwith(simdata, mean(X * Y * W - (1 - X) * Y * W))\n\n[1] 1.092786"
+  },
+  {
+    "objectID": "weighting/weighting.html#notes-and-conditions",
+    "href": "weighting/weighting.html#notes-and-conditions",
+    "title": "Inverse probability of treatment weighting and double robustness",
+    "section": "Notes and conditions",
+    "text": "Notes and conditions\n\nThis is a valid estimate of the causal effect only if \\(C\\) is the only confounder (i.e., there is not unmeasured confounding).\nWith continuous or numerous confounders, we usual need a model (e.g., logistic regression). Then we have instead \\(e(c, \\hat{\\alpha})\\), the estimated propensity score based on the model. This model need to be correctly specified to get a valid estimate of the causal effect.\nInference – you need to take into account the uncertainty in estimating the propensity score. Hence the whole procedure should be bootstrapped (including estimating the propensity score model)."
+  },
+  {
+    "objectID": "weighting/weighting.html#when-to-use-weighting-vs-standardization",
+    "href": "weighting/weighting.html#when-to-use-weighting-vs-standardization",
+    "title": "Inverse probability of treatment weighting and double robustness",
+    "section": "When to use weighting vs standardization?",
+    "text": "When to use weighting vs standardization?\nNot always clear cut answer\n\nAre you more confident in your outcome model or your treatment assignment model?\nSometimes standardization is more efficient, sometimes weighting is.\nBeware of extreme weights (very large values that can influence the results)"
+  },
+  {
+    "objectID": "weighting/weighting.html#doubly-robust-estimation",
+    "href": "weighting/weighting.html#doubly-robust-estimation",
+    "title": "Inverse probability of treatment weighting and double robustness",
+    "section": "Doubly robust estimation",
+    "text": "Doubly robust estimation\nIf you are not sure, use both!\nKey reference/review: Funk MJ, Westreich D, Wiesen C, Stürmer T, Brookhart MA, Davidian M. Doubly robust estimation of causal effects. American journal of epidemiology 2011; 173(7): 761–767.\n\\[\n\\frac{1}{n}\\sum_{i = 1}^n\\frac{Y_i X_i}{\\hat{p}_i} - \\frac{\\hat{Y}_{i1}(X_i - \\hat{p}_i)}{\\hat{p}_i} - \\frac{Y_i (1 - X_i)}{1 - \\hat{p}_i} - \\frac{\\hat{Y}_{i0}(X_i - \\hat{p}_i)}{1 - \\hat{p}_i}.  \n\\]\nwhere \\(\\hat{Y}_{i1}\\) is the predicted outcome under the outcome model for \\(X = 1\\) and likewise for \\(\\hat{Y}_{i0}\\)"
+  },
+  {
+    "objectID": "weighting/weighting.html#r-code-example",
+    "href": "weighting/weighting.html#r-code-example",
+    "title": "Inverse probability of treatment weighting and double robustness",
+    "section": "R code example",
+    "text": "R code example\n\ndata <- AF::clslowbwt\nhead(data)\n\n  id birth  smoke     race age lwt  bwt    low lbw smoker\n1  1     1 1. Yes 3. Other  28 120 2865  0. No   0      1\n2  1     2 1. Yes 3. Other  33 141 2609  0. No   0      1\n3  2     1  0. No 1. White  29 130 2613  0. No   0      0\n4  2     2  0. No 1. White  34 151 3125  0. No   0      0\n5  2     3  0. No 1. White  37 144 2481 1. Yes   1      0\n6  3     1 1. Yes 2. Black  31 187 1841 1. Yes   1      1\n\n## propensity score fit\n\npwfit <- glm(smoker ~ race * age * lwt + I(age^2) + I(lwt^2), data = data, \n             family = \"binomial\")\nphat <- predict(pwfit, type = \"response\")\n\n## single outcome model, unweighted\n\noutfit.unwt <- glm(bwt ~ smoker * (race + age + lwt) + I(age^2) + I(lwt^2), \n              data = data, family = \"gaussian\")\n\n## dummy data, where we set X to 0 and 1\n\ndata0 <- data1 <- data\ndata0$smoker <- 0\ndata1$smoker <- 1\n\ndr1 <- data$bwt * (data$smoker == 1) / phat - \n  predict(outfit.unwt, newdata = data1, type = \"response\") * \n  ((data$smoker == 1) - phat) / phat\ndr0 <- data$bwt * (data$smoker == 0) / (1 - phat) + \n  predict(outfit.unwt, newdata = data0, type = \"response\") * \n  ((data$smoker == 1) - phat) / (1 - phat)\n\nATEfunk <- mean(dr1) - mean(dr0)  \nATEfunk\n\n[1] -223.2702"
+  },
+  {
+    "objectID": "weighting/weighting.html#common-misconceptions",
+    "href": "weighting/weighting.html#common-misconceptions",
+    "title": "Inverse probability of treatment weighting and double robustness",
+    "section": "Common misconceptions",
+    "text": "Common misconceptions\n\nUsing weighting in addition to adjustment does not allow you to adjust for “residual” confounding – the weight model needs to include all confounders, not just the ones that were not adjusted for in the outcome model\nIt is not sufficient to just use a regression model and propensity score weights – they need to be combined in a specific way in order for the double-robustness property to hold\nInference is trickier than it seems. The easiest thing to do is bootstrap the whole procedure."
+  },
+  {
+    "objectID": "weighting/weighting.html#going-further",
+    "href": "weighting/weighting.html#going-further",
+    "title": "Inverse probability of treatment weighting and double robustness",
+    "section": "Going further",
+    "text": "Going further\n\nImproving efficiency and robustness: Targeted minimum loss based estimation (TMLE)\nMatching using the propensity score – creating a balanced sample\nWhat is there is unmeasured confounding? Sensitivity analysis, quantitative bias analysis, causal bounds"
   }
 ]

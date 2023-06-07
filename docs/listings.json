@@ -3,6 +3,7 @@
     "listing": "/index.html",
     "items": [
       "/hazards/hazards-pres.html",
+      "/weighting/weighting.html",
       "/regression/regression.html",
       "/causal-targets/causal-targets.html"
     ]

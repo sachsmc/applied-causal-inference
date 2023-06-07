@@ -1,8 +1,0 @@
----
-title: "Presentations"
-listing: 
-    contents: "*/*.qmd"
-    type: default
-    fields: [title, description]
-    max-description-length: 250
----

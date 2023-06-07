@@ -1,4 +1,0 @@
-.quarto-post:hover {
-  transition: .5s;
-  background-color: #ad000040;
-}
